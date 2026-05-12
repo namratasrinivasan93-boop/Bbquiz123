@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BB Quiz Night</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100vh; background: #0a0a0a; color: #e8e8e8; font-family: 'DM Sans', sans-serif; }
+    button { cursor: pointer; border: none; outline: none; font-family: inherit; }
+    input { outline: none; font-family: inherit; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 2px; }
+    @keyframes glow     { 0%,100%{box-shadow:0 0 20px #4ade8033} 50%{box-shadow:0 0 60px #4ade8099} }
+    @keyframes goldGlow { 0%,100%{box-shadow:0 0 20px #fbbf2433} 50%{box-shadow:0 0 60px #fbbf2499} }
+    @keyframes fadeUp   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    @keyframes scanline { 0%{background-position:0 0} 100%{background-position:0 100%} }
+    .fade { animation: fadeUp 0.25s ease forwards; }
+    .glow-green { animation: glow 1.5s infinite; }
+    .glow-gold  { animation: goldGlow 1.5s infinite; }
+    .pulse      { animation: pulse 1.5s infinite; }
+
+    /* Grid bg */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg,transparent,transparent 40px,#ffffff04 40px,#ffffff04 41px),
+                  repeating-linear-gradient(90deg,transparent,transparent 40px,#ffffff04 40px,#ffffff04 41px);
+    }
+
+    #app { position: relative; z-index: 1; min-height: 100vh; }
+
+    /* Screens */
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* Landing */
+    #screen-landing { align-items: center; justify-content: center; text-align: center; padding: 40px 20px; }
+    .title-bb { font-family: 'Bebas Neue'; font-size: clamp(52px,12vw,100px); letter-spacing: 4px; line-height: 0.9; color: #e8e8e8; }
+    .title-green { color: #4ade80; }
+    .tagline { font-family: 'Bebas Neue'; font-size: 12px; letter-spacing: 4px; color: #555; margin: 12px 0 48px; }
+
+    /* Buttons */
+    .btn { font-family: 'Bebas Neue'; letter-spacing: 2px; border-radius: 4px; transition: opacity 0.15s; cursor: pointer; border: none; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-lg { font-size: 20px; padding: 14px 32px; }
+    .btn-md { font-size: 14px; padding: 10px 20px; }
+    .btn-sm { font-size: 11px; padding: 6px 12px; }
+    .btn-green  { background: #4ade80; color: #000; }
+    .btn-gold   { background: #fbbf24; color: #000; }
+    .btn-red    { background: #f87171; color: #fff; }
+    .btn-blue   { background: #60a5fa; color: #fff; }
+    .btn-ghost  { background: #1c1c1c; color: #e8e8e8; }
+    .btn-danger { background: #f87171; color: #fff; }
+
+    .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* Panel */
+    .panel { background: #111111; border: 1px solid #2e2e2e; border-radius: 8px; padding: 18px; }
+    .panel-green { border-color: #4ade80; box-shadow: 0 0 30px #4ade8033; }
+    .panel-gold  { border-color: #fbbf24; box-shadow: 0 0 30px #fbbf2433; }
+
+    /* Label */
+    .lbl { font-family: 'Bebas Neue'; font-size: 11px; letter-spacing: 3px; color: #555; margin-bottom: 10px; }
+    .lbl-green { color: #4ade80; }
+    .lbl-gold  { color: #fbbf24; }
+
+    /* Setup / Join screens */
+    .setup-wrap { padding: 32px 24px; max-width: 600px; margin: 0 auto; width: 100%; }
+    .screen-title { font-family: 'Bebas Neue'; font-size: 36px; letter-spacing: 3px; margin-bottom: 4px; }
+    .screen-sub   { color: #555; font-size: 13px; margin-bottom: 28px; }
+
+    /* Input */
+    .input { background: #1c1c1c; border: 1px solid #2e2e2e; border-radius: 4px; padding: 10px 14px; color: #e8e8e8; font-size: 14px; width: 100%; }
+    .input-lg { font-size: 16px; padding: 12px 16px; }
+    .input-error { border-color: #f87171; }
+    .input-row { display: flex; gap: 10px; }
+
+    /* Player list */
+    .player-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2e2e2e; }
+    .player-row:last-child { border-bottom: none; }
+    .player-name-big { font-family: 'Bebas Neue'; font-size: 18px; letter-spacing: 1px; }
+    .remove-btn { background: none; color: #555; font-size: 20px; padding: 2px 8px; }
+
+    /* Host layout */
+    #screen-host { flex-direction: column; }
+    .host-header { background: #111111; border-bottom: 1px solid #2e2e2e; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .host-title { font-family: 'Bebas Neue'; font-size: 22px; letter-spacing: 3px; color: #4ade80; }
+    .host-body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1100px; margin: 0 auto; width: 100%; overflow-y: auto; }
+    @media(max-width:700px) { .host-body { grid-template-columns: 1fr; } }
+    .full-col { grid-column: 1 / -1; }
+
+    /* Buzzer panel */
+    .buzz-status { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .buzz-waiting { font-family: 'Bebas Neue'; font-size: 16px; color: #4ade80; letter-spacing: 2px; padding: 8px 16px; border: 1px solid #4ade80; border-radius: 4px; }
+    .buzz-first { font-family: 'Bebas Neue'; font-size: 32px; color: #fbbf24; letter-spacing: 2px; padding: 4px 16px; border: 2px solid #fbbf24; border-radius: 4px; }
+    .buzz-order { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .buzz-chip { font-family: 'Bebas Neue'; font-size: 13px; color: #888; background: #1c1c1c; padding: 3px 10px; border-radius: 3px; }
+
+    /* Scoreboard grid */
+    .score-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 10px; }
+    .score-card { background: #1c1c1c; border: 1px solid #2e2e2e; border-radius: 6px; padding: 12px; }
+    .score-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .score-name { font-family: 'Bebas Neue'; font-size: 15px; letter-spacing: 1px; }
+    .score-pts  { font-family: 'Bebas Neue'; font-size: 22px; color: #4ade80; }
+    .score-pts.negative { color: #f87171; }
+    .adj-row { display: flex; gap: 3px; margin-bottom: 5px; }
+    .adj-btn { flex: 1; border-radius: 3px; padding: 5px 0; font-family: 'Bebas Neue'; font-size: 11px; cursor: pointer; border: none; }
+    .adj-neg { background: #f8717122; border: 1px solid #f8717133; color: #f87171; }
+    .adj-pos { background: #4ade8022; border: 1px solid #4ade8033; color: #4ade80; }
+    .score-input { width: 100%; background: #0a0a0a; border: 1px solid #2e2e2e; border-radius: 3px; padding: 5px 8px; color: #e8e8e8; font-size: 12px; margin-top: 4px; }
+
+    /* Cards */
+    .cards-list { display: flex; flex-direction: column; gap: 12px; }
+    .card-player { margin-bottom: 4px; }
+    .card-player-name { font-family: 'Bebas Neue'; font-size: 13px; color: #888; letter-spacing: 1px; margin-bottom: 5px; }
+    .card-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+    .card-chip { border-radius: 4px; padding: 5px 10px; font-family: 'Bebas Neue'; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; border: 1px solid; }
+    .card-chip.active { background: #fbbf2422; border-color: #fbbf2455; color: #fbbf24; }
+    .card-chip.used   { background: #1c1c1c; border-color: #2e2e2e; color: #555; text-decoration: line-through; opacity: 0.45; }
+
+    /* Wager */
+    .wager-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; margin-bottom: 5px; background: #1c1c1c; border-radius: 4px; border: 1px solid #2e2e2e; }
+    .wager-row.locked { border-color: #fbbf24; }
+    .wager-player { font-family: 'Bebas Neue'; font-size: 14px; letter-spacing: 1px; }
+    .wager-pct  { font-family: 'Bebas Neue'; font-size: 18px; color: #fbbf24; }
+    .wager-pts  { font-family: 'Bebas Neue'; font-size: 11px; color: #888; }
+    .wager-wait { font-family: 'Bebas Neue'; font-size: 12px; color: #555; }
+
+    /* Player screen */
+    #screen-player { flex-direction: column; }
+    .player-header { background: #111111; border-bottom: 1px solid #2e2e2e; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .player-hname { font-family: 'Bebas Neue'; font-size: 20px; letter-spacing: 2px; }
+    .player-hsub  { font-size: 11px; color: #555; }
+    .player-hscore { font-family: 'Bebas Neue'; font-size: 32px; color: #4ade80; line-height: 1; text-align: right; }
+    .player-hscore.neg { color: #f87171; }
+    .player-hpts  { font-size: 10px; color: #555; text-align: right; }
+    .player-body  { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 28px; overflow-y: auto; }
+
+    /* Big buzzer button */
+    .buzzer-btn { width: 220px; height: 220px; border-radius: 50%; font-family: 'Bebas Neue'; font-size: 34px; letter-spacing: 4px; transition: all 0.15s; border: 5px solid; }
+    .buzzer-btn.open   { background: #4ade80; border-color: #4ade80; color: #000; animation: glow 1.5s infinite; box-shadow: 0 0 80px #4ade8033; }
+    .buzzer-btn.locked { background: #1c1c1c; border-color: #2e2e2e; color: #555; cursor: not-allowed; }
+    .buzzer-btn.buzzed { background: #1c1c1c; border-color: #2e2e2e; color: #555; cursor: not-allowed; }
+
+    .first-badge { font-family: 'Bebas Neue'; font-size: 38px; color: #fbbf24; letter-spacing: 4px; padding: 10px 28px; border: 2px solid #fbbf24; border-radius: 8px; animation: goldGlow 1s infinite; text-align: center; }
+    .waiting-lbl { font-family: 'Bebas Neue'; font-size: 22px; color: #555; letter-spacing: 2px; text-align: center; }
+    .locked-lbl  { font-family: 'Bebas Neue'; font-size: 14px; color: #555; letter-spacing: 2px; }
+
+    /* Wager player */
+    .wager-player-wrap { width: 100%; max-width: 320px; text-align: center; }
+    .wager-locked-box { background: #fbbf2422; border: 2px solid #fbbf24; border-radius: 10px; padding: 28px; animation: goldGlow 1.5s infinite; }
+    .wager-locked-pct { font-family: 'Bebas Neue'; font-size: 56px; color: #fbbf24; line-height: 1; }
+    .wager-locked-sub { color: #888; font-size: 12px; margin-top: 4px; }
+    .wager-opts { display: flex; flex-direction: column; gap: 10px; }
+    .wager-opt { border-radius: 8px; padding: 20px; font-family: 'Bebas Neue'; font-size: 26px; letter-spacing: 3px; width: 100%; border: 2px solid; cursor: pointer; transition: background 0.15s; }
+    .wager-opt-low    { background: #60a5fa22; border-color: #60a5fa; color: #60a5fa; }
+    .wager-opt-medium { background: #fbbf2422; border-color: #fbbf24; color: #fbbf24; }
+    .wager-opt-allin  { background: #f8717122; border-color: #f87171; color: #f87171; }
+
+    /* Player cards */
+    .my-cards { width: 100%; max-width: 360px; }
+    .my-card-row { display: flex; align-items: center; gap: 12px; border-radius: 6px; padding: 12px 16px; margin-bottom: 7px; border: 1px solid; transition: opacity 0.3s; }
+    .my-card-row.active { background: #111111; border-color: #fbbf2444; opacity: 1; }
+    .my-card-row.used   { background: #1c1c1c; border-color: #2e2e2e; opacity: 0.3; }
+    .my-card-name { font-family: 'Bebas Neue'; font-size: 15px; letter-spacing: 1px; }
+    .my-card-name.active { color: #fbbf24; }
+    .my-card-name.used   { color: #555; text-decoration: line-through; }
+    .my-card-used-tag { margin-left: auto; font-family: 'Bebas Neue'; font-size: 11px; color: #555; letter-spacing: 1px; }
+    .cards-hint { text-align: center; color: #555; font-size: 11px; margin-top: 8px; }
+
+    /* Waiting screen */
+    .waiting-screen { flex: 1; display: flex; align-items: center; justify-content: center; }
+    .connecting-box { text-align: center; }
+
+    /* Back btn */
+    .back-btn { background: none; color: #555; font-family: 'Bebas Neue'; font-size: 12px; letter-spacing: 2px; margin-bottom: 24px; }
+
+    /* Error */
+    .err-msg { color: #f87171; font-size: 12px; margin-bottom: 10px; }
+
+    /* Utils */
+    .mt8  { margin-top: 8px; }
+    .mt14 { margin-top: 14px; }
+    .mt16 { margin-top: 16px; }
+    .mb0  { margin-bottom: 0; }
+    .text-center { text-align: center; }
+    .text-muted  { color: #555; }
+    .text-dim    { color: #888; }
+    .emoji-big   { font-size: 60px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LANDING -->
+  <div id="screen-landing" class="screen active">
+    <div style="font-family:'Bebas Neue';font-size:11px;letter-spacing:6px;color:#555;margin-bottom:12px;">BREAKING BAD</div>
+    <h1 class="title-bb">QUIZ<br><span class="title-green">NIGHT</span></h1>
+    <div class="tagline">SAY MY NAME. THEN ANSWER THE QUESTION.</div>
+    <div class="btn-row">
+      <button class="btn btn-lg btn-green" onclick="showScreen('setup')">HOST GAME</button>
+      <button class="btn btn-lg btn-ghost" onclick="showScreen('join')">JOIN AS PLAYER</button>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <div id="screen-setup" class="screen">
+    <div class="setup-wrap">
+      <button class="back-btn" onclick="showScreen('landing')">← BACK</button>
+      <div class="screen-title">GAME SETUP</div>
+      <div class="screen-sub">Add up to 8 players. Then start the game.</div>
+      <div class="panel" style="margin-bottom:16px">
+        <div class="lbl">ADD PLAYER</div>
+        <div class="input-row">
+          <input id="new-player-input" class="input" placeholder="Player name..." maxlength="20" onkeydown="if(event.key==='Enter')addPlayer()" />
+          <button class="btn btn-md btn-green" onclick="addPlayer()">ADD</button>
+        </div>
+      </div>
+      <div class="panel" id="player-list-panel" style="margin-bottom:20px;display:none">
+        <div class="lbl" id="player-count-lbl">PLAYERS</div>
+        <div id="player-list"></div>
+      </div>
+      <button class="btn btn-lg btn-green" id="start-btn" style="width:100%;opacity:0.4" disabled onclick="startGame()">START GAME →</button>
+    </div>
+  </div>
+
+  <!-- JOIN -->
+  <div id="screen-join" class="screen">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div class="panel text-center" style="width:100%;max-width:340px">
+        <div style="font-family:'Bebas Neue';font-size:28px;letter-spacing:3px;margin-bottom:6px">JOIN GAME</div>
+        <div style="color:#555;font-size:13px;margin-bottom:24px">Enter the name your host added you as</div>
+        <input id="join-name-input" class="input input-lg" placeholder="Your name..." style="margin-bottom:8px" onkeydown="if(event.key==='Enter')joinGame()" />
+        <div id="join-error" class="err-msg" style="display:none"></div>
+        <button class="btn btn-lg btn-green" style="width:100%" onclick="joinGame()">JOIN →</button>
+        <button onclick="showScreen('landing')" style="background:none;color:#555;font-size:12px;margin-top:16px;display:block;margin-left:auto;margin-right:auto">← Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOST -->
+  <div id="screen-host" class="screen">
+    <div class="host-header">
+      <div class="host-title">BB QUIZ — HOST</div>
+      <button onclick="showScreen('landing')" style="background:none;color:#555;font-family:'Bebas Neue';font-size:12px;letter-spacing:2px">EXIT</button>
+    </div>
+    <div class="host-body">
+
+      <!-- BUZZER -->
+      <div class="panel full-col" id="buzzer-panel">
+        <div class="lbl" id="buzzer-lbl">BUZZER</div>
+        <div class="buzz-status" id="buzz-status">
+          <button class="btn btn-lg btn-green" id="buzzer-toggle-btn" onclick="toggleBuzzer()">⚡ OPEN BUZZER</button>
+          <div id="buzz-first-wrap" style="display:none">
+            <div style="font-family:'Bebas Neue';font-size:11px;letter-spacing:3px;color:#555">FIRST BUZZ</div>
+            <div class="buzz-first glow-gold" id="buzz-first-name"></div>
+          </div>
+          <div id="buzz-waiting" style="display:none" class="buzz-waiting pulse">WAITING...</div>
+        </div>
+        <div class="buzz-order" id="buzz-order-list"></div>
+      </div>
+
+      <!-- SCOREBOARD -->
+      <div class="panel full-col">
+        <div class="lbl">SCOREBOARD</div>
+        <div class="score-grid" id="score-grid"></div>
+      </div>
+
+      <!-- CARDS -->
+      <div class="panel">
+        <div class="lbl">CHARACTER CARDS</div>
+        <div class="cards-list" id="host-cards-list"></div>
+      </div>
+
+      <!-- WAGER -->
+      <div class="panel" id="wager-panel">
+        <div class="lbl" id="wager-lbl">WAGER ROUND</div>
+        <button class="btn btn-md btn-gold" id="wager-toggle-btn" onclick="toggleWager()" style="margin-bottom:14px">💰 OPEN WAGER</button>
+        <div id="wager-host-list" style="display:none"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PLAYER -->
+  <div id="screen-player" class="screen">
+    <div class="player-header">
+      <div>
+        <div class="player-hname" id="player-display-name">—</div>
+        <div class="player-hsub">BB QUIZ NIGHT</div>
+      </div>
+      <div>
+        <div class="player-hscore" id="player-display-score">0</div>
+        <div class="player-hpts">PTS</div>
+      </div>
+    </div>
+    <div class="player-body" id="player-body">
+      <div class="connecting-box">
+        <div style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px">CONNECTING...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+// ── Firebase config ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDajO7DLZvV8rZPOR-aVY6fevNDll_RzXw",
+  authDomain: "bbquiz-e041c.firebaseapp.com",
+  databaseURL: "https://bbquiz-e041c-default-rtdb.firebaseio.com",
+  projectId: "bbquiz-e041c",
+  storageBucket: "bbquiz-e041c.firebasestorage.app",
+  messagingSenderId: "886553585699",
+  appId: "1:886553585699:web:fac884674e01c9441c6996"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── Constants ────────────────────────────────────────────────────────────────
+const CARDS = [
+  { id: "heisenberg",   name: "The Heisenberg",  emoji: "🧪" },
+  { id: "fring",        name: "The Fring",        emoji: "🐔" },
+  { id: "ehrmantraut",  name: "The Ehrmantraut",  emoji: "🔫" },
+  { id: "goodman",      name: "The Goodman",      emoji: "⚖️"  },
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+let localPlayers   = [];   // setup only
+let myPlayerId     = null;
+let gameState      = {};
+let playersState   = {};
+
+// ── Screen router ────────────────────────────────────────────────────────────
+window.showScreen = function(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+};
+
+// ── SETUP ────────────────────────────────────────────────────────────────────
+window.addPlayer = function() {
+  const input = document.getElementById('new-player-input');
+  const name  = input.value.trim();
+  if (!name || localPlayers.length >= 8) return;
+  const pid = Date.now().toString();
+  localPlayers.push({ id: pid, name, usedCards: [], score: 0 });
+  input.value = '';
+  renderSetupList();
+};
+
+function renderSetupList() {
+  const list  = document.getElementById('player-list');
+  const panel = document.getElementById('player-list-panel');
+  const btn   = document.getElementById('start-btn');
+  const lbl   = document.getElementById('player-count-lbl');
+
+  panel.style.display = localPlayers.length ? 'block' : 'none';
+  lbl.textContent = `PLAYERS (${localPlayers.length}/8)`;
+  btn.disabled = localPlayers.length < 2;
+  btn.style.opacity = localPlayers.length < 2 ? '0.4' : '1';
+
+  list.innerHTML = localPlayers.map((p, i) => `
+    <div class="player-row">
+      <span class="player-name-big">${p.name}</span>
+      <button class="remove-btn" onclick="removePlayer('${p.id}')">×</button>
+    </div>
+  `).join('');
+}
+
+window.removePlayer = function(id) {
+  localPlayers = localPlayers.filter(p => p.id !== id);
+  renderSetupList();
+};
+
+window.startGame = async function() {
+  const playerMap = {};
+  localPlayers.forEach(p => { playerMap[p.id] = { ...p }; });
+  await set(ref(db, 'game'), { buzzerOpen: false, buzzOrder: {}, wagerOpen: false, wagers: {}, wagerLocked: {} });
+  await set(ref(db, 'players'), playerMap);
+  subscribeHost();
+  showScreen('host');
+};
+
+// ── JOIN ─────────────────────────────────────────────────────────────────────
+window.joinGame = function() {
+  const name = document.getElementById('join-name-input').value.trim();
+  const err  = document.getElementById('join-error');
+  if (!name) return;
+  err.style.display = 'none';
+
+  onValue(ref(db, 'players'), snap => {
+    const data = snap.val() || {};
+    const match = Object.values(data).find(p => p.name.toLowerCase() === name.toLowerCase());
+    if (!match) {
+      err.textContent = 'Name not found. Ask your host to add you.';
+      err.style.display = 'block';
+    } else {
+      myPlayerId = match.id;
+      subscribePlayer();
+      showScreen('player');
+    }
+  }, { onlyOnce: true });
+};
+
+// ── HOST SUBSCRIPTIONS ───────────────────────────────────────────────────────
+function subscribeHost() {
+  onValue(ref(db, 'game'),    snap => { gameState = snap.val() || {};    renderHost(); });
+  onValue(ref(db, 'players'), snap => { playersState = snap.val() || {}; renderHost(); });
+}
+
+function renderHost() {
+  renderBuzzer();
+  renderScoreboard();
+  renderHostCards();
+  renderWager();
+}
+
+function renderBuzzer() {
+  const open      = gameState.buzzerOpen;
+  const buzzOrder = gameState.buzzOrder ? Object.entries(gameState.buzzOrder).sort((a,b) => parseInt(a[0])-parseInt(b[0])).map(e => e[1]) : [];
+  const firstId   = buzzOrder[0];
+  const firstName = firstId && playersState[firstId] ? playersState[firstId].name : null;
+
+  const panel      = document.getElementById('buzzer-panel');
+  const lbl        = document.getElementById('buzzer-lbl');
+  const btn        = document.getElementById('buzzer-toggle-btn');
+  const firstWrap  = document.getElementById('buzz-first-wrap');
+  const waiting    = document.getElementById('buzz-waiting');
+  const orderList  = document.getElementById('buzz-order-list');
+
+  panel.className = open ? 'panel full-col panel-green' : 'panel full-col';
+  lbl.className   = open ? 'lbl lbl-green' : 'lbl';
+
+  if (open) {
+    btn.className   = 'btn btn-lg btn-danger';
+    btn.textContent = '🔒 LOCK BUZZER';
+  } else {
+    btn.className   = 'btn btn-lg btn-green';
+    btn.textContent = '⚡ OPEN BUZZER';
+  }
+
+  if (firstName) {
+    firstWrap.style.display = 'block';
+    waiting.style.display   = 'none';
+    document.getElementById('buzz-first-name').textContent = firstName;
+  } else if (open) {
+    firstWrap.style.display = 'none';
+    waiting.style.display   = 'block';
+  } else {
+    firstWrap.style.display = 'none';
+    waiting.style.display   = 'none';
+  }
+
+  orderList.innerHTML = buzzOrder.slice(1).map((pid, i) => {
+    const n = playersState[pid]?.name || '?';
+    return `<span class="buzz-chip">#${i+2} ${n}</span>`;
+  }).join('');
+}
+
+function renderScoreboard() {
+  const grid = document.getElementById('score-grid');
+  const players = Object.values(playersState).sort((a,b) => (b.score||0)-(a.score||0));
+  grid.innerHTML = players.map((p, i) => `
+    <div class="score-card">
+      <div class="score-top">
+        <span class="score-name"><span style="color:#555;font-size:11px">#${i+1} </span>${p.name}</span>
+        <span class="score-pts ${(p.score||0)<0?'negative':''}">${p.score||0}</span>
+      </div>
+      <div class="adj-row">
+        ${[-100,-50,-10].map(d=>`<button class="adj-btn adj-neg" onclick="adjustScore('${p.id}',${d})">${d}</button>`).join('')}
+      </div>
+      <div class="adj-row">
+        ${[10,50,100].map(d=>`<button class="adj-btn adj-pos" onclick="adjustScore('${p.id}',${d})">+${d}</button>`).join('')}
+      </div>
+      <input class="score-input" type="number" placeholder="Set score..." onblur="setScore('${p.id}',this.value);this.value=''" />
+    </div>
+  `).join('');
+}
+
+function renderHostCards() {
+  const list    = document.getElementById('host-cards-list');
+  const players = Object.values(playersState).sort((a,b) => (b.score||0)-(a.score||0));
+  list.innerHTML = players.map(p => `
+    <div class="card-player">
+      <div class="card-player-name">${p.name}</div>
+      <div class="card-chips">
+        ${CARDS.map(card => {
+          const used = (p.usedCards||[]).includes(card.id);
+          return `<button class="card-chip ${used?'used':'active'}" onclick="toggleCard('${p.id}','${card.id}')">${card.emoji} ${card.name.replace('The ','')}</button>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderWager() {
+  const open     = gameState.wagerOpen;
+  const panel    = document.getElementById('wager-panel');
+  const lbl      = document.getElementById('wager-lbl');
+  const btn      = document.getElementById('wager-toggle-btn');
+  const listWrap = document.getElementById('wager-host-list');
+  const players  = Object.values(playersState).sort((a,b) => (b.score||0)-(a.score||0));
+
+  panel.className = open ? 'panel panel-gold' : 'panel';
+  lbl.className   = open ? 'lbl lbl-gold' : 'lbl';
+
+  if (open) {
+    btn.className   = 'btn btn-md btn-danger';
+    btn.textContent = '🔒 CLOSE WAGER';
+    listWrap.style.display = 'block';
+    listWrap.innerHTML = `
+      <div class="lbl" style="color:#555">PLAYER WAGERS — HOST EYES ONLY</div>
+      ${players.map(p => {
+        const locked = gameState.wagerLocked?.[p.id];
+        const pct    = gameState.wagers?.[p.id];
+        const pts    = pct ? Math.floor((p.score||0) * pct / 100) : null;
+        return `
+          <div class="wager-row ${locked?'locked':''}">
+            <span class="wager-player">${p.name}</span>
+            ${locked
+              ? `<div style="text-align:right"><div class="wager-pct">${pct}%</div><div class="wager-pts">${pts} pts</div></div>`
+              : `<span class="wager-wait pulse">WAITING...</span>`
+            }
+          </div>`;
+      }).join('')}
+    `;
+  } else {
+    btn.className   = 'btn btn-md btn-gold';
+    btn.textContent = '💰 OPEN WAGER';
+    listWrap.style.display = 'none';
+  }
+}
+
+// ── HOST ACTIONS ─────────────────────────────────────────────────────────────
+window.toggleBuzzer = async function() {
+  if (gameState.buzzerOpen) {
+    await update(ref(db, 'game'), { buzzerOpen: false });
+  } else {
+    await update(ref(db, 'game'), { buzzerOpen: true, buzzOrder: {} });
+  }
+};
+
+window.toggleWager = async function() {
+  if (gameState.wagerOpen) {
+    await update(ref(db, 'game'), { wagerOpen: false });
+  } else {
+    await update(ref(db, 'game'), { wagerOpen: true, wagers: {}, wagerLocked: {} });
+  }
+};
+
+window.adjustScore = async function(pid, delta) {
+  const cur = playersState[pid]?.score || 0;
+  await update(ref(db, `players/${pid}`), { score: cur + delta });
+};
+
+window.setScore = async function(pid, val) {
+  const n = parseInt(val);
+  if (!isNaN(n)) await update(ref(db, `players/${pid}`), { score: n });
+};
+
+window.toggleCard = async function(pid, cardId) {
+  const used = playersState[pid]?.usedCards || [];
+  const next = used.includes(cardId) ? used.filter(c => c !== cardId) : [...used, cardId];
+  await update(ref(db, `players/${pid}`), { usedCards: next });
+};
+
+// ── PLAYER SUBSCRIPTIONS ─────────────────────────────────────────────────────
+function subscribePlayer() {
+  onValue(ref(db, 'game'),               snap => { gameState = snap.val() || {};          renderPlayer(); });
+  onValue(ref(db, `players/${myPlayerId}`), snap => { playersState[myPlayerId] = snap.val(); renderPlayer(); });
+}
+
+function renderPlayer() {
+  const me = playersState[myPlayerId];
+  if (!me) return;
+
+  const score = me.score || 0;
+  document.getElementById('player-display-name').textContent = me.name;
+  const scoreEl = document.getElementById('player-display-score');
+  scoreEl.textContent = (score > 0 ? '+' : '') + score;
+  scoreEl.className = 'player-hscore' + (score < 0 ? ' neg' : '');
+
+  const body = document.getElementById('player-body');
+  const buzzOrder = gameState.buzzOrder
+    ? Object.entries(gameState.buzzOrder).sort((a,b) => parseInt(a[0])-parseInt(b[0])).map(e => e[1])
+    : [];
+  const iFirst      = buzzOrder[0] === myPlayerId;
+  const alreadyBuzzed = buzzOrder.includes(myPlayerId);
+  const canBuzz     = gameState.buzzerOpen && !alreadyBuzzed;
+  const wagerOpen   = gameState.wagerOpen;
+  const myWagerLocked = gameState.wagerLocked?.[myPlayerId];
+  const myWagerPct    = gameState.wagers?.[myPlayerId];
+
+  let html = '';
+
+  // WAGER
+  if (wagerOpen) {
+    html += `<div class="wager-player-wrap fade">
+      <div class="lbl lbl-gold text-center" style="margin-bottom:16px">PLACE YOUR WAGER</div>`;
+    if (myWagerLocked) {
+      html += `<div class="wager-locked-box">
+        <div class="lbl text-center" style="margin-bottom:4px">LOCKED IN</div>
+        <div class="wager-locked-pct">${myWagerPct}%</div>
+        <div class="wager-locked-sub">${Math.floor(score * myWagerPct / 100)} points on the line</div>
+      </div>`;
+    } else {
+      html += `<div class="wager-opts">
+        <button class="wager-opt wager-opt-low"    onclick="playerWager(25)">LOW — 25%</button>
+        <button class="wager-opt wager-opt-medium" onclick="playerWager(50)">MEDIUM — 50%</button>
+        <button class="wager-opt wager-opt-allin"  onclick="playerWager(100)">ALL IN — 100%</button>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // BUZZER
+  if (!wagerOpen) {
+    if (iFirst) {
+      html += `<div class="text-center fade">
+        <div class="emoji-big">🎯</div>
+        <div class="first-badge">YOU'RE FIRST!</div>
+      </div>`;
+    } else if (alreadyBuzzed) {
+      html += `<div class="text-center">
+        <div class="emoji-big" style="font-size:44px">⏳</div>
+        <div class="waiting-lbl">BUZZED — WAITING</div>
+      </div>`;
+    } else {
+      html += `<button class="buzzer-btn ${canBuzz?'open':'locked'}" onclick="playerBuzz()" ${canBuzz?'':'disabled'}>
+        ${canBuzz ? 'BUZZ' : 'LOCKED'}
+      </button>`;
+    }
+    if (!gameState.buzzerOpen) {
+      html += `<div class="locked-lbl">WAITING FOR HOST...</div>`;
+    }
+  }
+
+  // MY CARDS
+  html += `<div class="my-cards">
+    <div class="lbl text-center">YOUR CHARACTER CARDS</div>
+    ${CARDS.map(card => {
+      const used = (me.usedCards||[]).includes(card.id);
+      return `<div class="my-card-row ${used?'used':'active'}">
+        <span style="font-size:20px">${card.emoji}</span>
+        <span class="my-card-name ${used?'used':'active'}">${card.name}</span>
+        ${used ? `<span class="my-card-used-tag">USED</span>` : ''}
+      </div>`;
+    }).join('')}
+    <div class="cards-hint">Tell the host when you want to play a card</div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+// ── PLAYER ACTIONS ───────────────────────────────────────────────────────────
+window.playerBuzz = async function() {
+  const buzzOrder = gameState.buzzOrder
+    ? Object.values(gameState.buzzOrder)
+    : [];
+  if (!gameState.buzzerOpen || buzzOrder.includes(myPlayerId)) return;
+  const slot = Date.now().toString();
+  await update(ref(db, 'game/buzzOrder'), { [slot]: myPlayerId });
+};
+
+window.playerWager = async function(pct) {
+  await update(ref(db, 'game/wagers'),      { [myPlayerId]: pct });
+  await update(ref(db, 'game/wagerLocked'), { [myPlayerId]: true });
+};
+
+</script>
+</body>
+</html>
